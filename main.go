@@ -12,6 +12,7 @@ import (
 	"net/textproto"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/codegangsta/martini"
 )
@@ -35,19 +36,22 @@ func main() {
 	log.Printf("listening on addr=%q", l.Addr().String())
 
 	m := martini.Classic()
-	m.Any("/:user/:repo/**", gitMasquerade)
+	m.Any("/:user/:repo/:version/**", gitMasquerade)
 
 	http.Serve(l, m)
 }
 
-func gitMasquerade(rw http.ResponseWriter, r *http.Request) {
+func gitMasquerade(rw http.ResponseWriter, r *http.Request, p martini.Params) {
 	log.Printf("executing git command for url %q", r.URL.Path)
+
+	//ignore the version
+	path := strings.Replace(r.URL.Path, "/"+p["version"], "", -1)
 
 	cmd := exec.Command("git", "http-backend")
 	cmd.Env = []string{
 		fmt.Sprintf("GIT_PROJECT_ROOT=%s", *gitdir),
 		fmt.Sprintf("GIT_HTTP_EXPORT_ALL="),
-		fmt.Sprintf("PATH_INFO=%s", r.URL.Path),
+		fmt.Sprintf("PATH_INFO=%s", path),
 		fmt.Sprintf("QUERY_STRING=%s", r.URL.RawQuery),
 		fmt.Sprintf("REQUEST_METHOD=%s", r.Method),
 		fmt.Sprintf("CONTENT_TYPE=%s", r.Header.Get("Content-Type")),
