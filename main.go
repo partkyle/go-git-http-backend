@@ -12,6 +12,8 @@ import (
 	"net/textproto"
 	"os"
 	"os/exec"
+
+	"github.com/codegangsta/martini"
 )
 
 var (
@@ -32,11 +34,13 @@ func main() {
 
 	log.Printf("listening on addr=%q", l.Addr().String())
 
-	http.HandleFunc("/", handleConn)
-	http.Serve(l, nil)
+	m := martini.Classic()
+	m.Any("/:user/:repo/**", gitMasquerade)
+
+	http.Serve(l, m)
 }
 
-func handleConn(rw http.ResponseWriter, r *http.Request) {
+func gitMasquerade(rw http.ResponseWriter, r *http.Request) {
 	log.Printf("executing git command for url %q", r.URL.Path)
 
 	cmd := exec.Command("git", "http-backend")
